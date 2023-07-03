@@ -23,7 +23,7 @@ try {
 } catch (error) {
   console.log(error.message);
 }
-const mongoDb = mongoClient.db();
+const db = mongoClient.db();
 
 
 dayjs.extend(utc);
@@ -33,7 +33,7 @@ dayjs.extend(timezone);
 setInterval(async () => {
   try {
     const timeLimit = dayjs().subtract(10, "seconds").valueOf();
-    const deletedParticipants = await mongoDb
+    const deletedParticipants = await db
       .collection("participants")
       .findOneAndDelete({ lastStatus: { $lt: timeLimit } });
 
@@ -47,14 +47,14 @@ setInterval(async () => {
         time: dayjs().tz("America/Sao_Paulo").format("HH:mm:ss"),
       };
 
-      await mongoDb
+      await db
         .collection("participants")
         .updateOne(
           { name: participantName },
           { $set: { lastStatus: Date.now() } }
         );
 
-      await mongoDb.collection("messages").insertOne(message);
+      await db.collection("messages").insertOne(message);
     }
   } catch (error) {
     console.error(error.message);
@@ -87,7 +87,7 @@ app.post("/participants", async (req, res) => {
       lastStatus: Date.now(),
     };
 
-    const existingParticipant = await mongoDb
+    const existingParticipant = await db
       .collection("participants")
       .findOne({ name: participant.name });
 
@@ -95,7 +95,7 @@ app.post("/participants", async (req, res) => {
       return res.status(409).send({ message: "Participant already exists!" });
     }
 
-    await mongoDb.collection("participants").insertOne(participant);
+    await db.collection("participants").insertOne(participant);
 
     const message = {
       from: participant.name,
@@ -105,7 +105,7 @@ app.post("/participants", async (req, res) => {
       time: dayjs().tz("America/Sao_Paulo").format("HH:mm:ss"),
     };
 
-    await mongoDb.collection("messages").insertOne(message);
+    await db.collection("messages").insertOne(message);
 
     res.status(201).send();
   } catch (error) {
@@ -117,7 +117,7 @@ app.post("/participants", async (req, res) => {
 
 app.get("/participants", async (req, res) => {
   try {
-    const participants = await mongoDb.collection("participants").find().toArray();
+    const participants = await db.collection("participants").find().toArray();
     res.send(participants || []);
   } catch (error) {
     console.error(error.message);
@@ -142,7 +142,7 @@ app.post("/messages", async (req, res) => {
 
   const from = req.header("User");
 
-  const existingParticipant = await mongoDb
+  const existingParticipant = await db
     .collection("participants")
     .findOne({ name: from });
   if (!existingParticipant) {
@@ -161,7 +161,7 @@ app.post("/messages", async (req, res) => {
     time: dayjs().tz("America/Sao_Paulo").format("HH:mm:ss"),
   };
 
-  await mongoDb.collection("messages").insertOne(message);
+  await db.collection("messages").insertOne(message);
 
   res.status(201).send();
 });
